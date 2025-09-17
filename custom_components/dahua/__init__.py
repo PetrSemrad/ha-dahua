@@ -112,11 +112,13 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
         self._supports_disarming_linkage = False
         self._supports_event_notifications = False
         self._supports_smart_motion_detection = False
+        self._supports_ptz_position = False
         self._supports_lighting = False
         self._supports_floodlightmode = False
         self._supports_ptz_position = False
         self._serial_number: str
         self._profile_mode = "0"
+        self._preset_position = "0"
         self._supports_profile_mode = False
         self._channel = channel
         self._address = address
@@ -251,6 +253,15 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
                     self._supports_event_notifications = False
                 _LOGGER.info("Device supports event notifications=%s", self._supports_event_notifications)
 
+                # PTZ
+                # The following lines are for Dahua devices
+                try:
+                    await self.client.async_get_ptz_position()
+                    self._supports_ptz_position = True
+                except ClientError:
+                    self._supports_ptz_position = False
+                _LOGGER.info("Device supports PTZ position=%s", self._supports_ptz_position)
+
                 # Smart motion detection is enabled/disabled/fetched differently on Dahua devices compared to Amcrest
                 # The following lines are for Dahua devices
                 try:
@@ -330,6 +341,19 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
                 except Exception as exception:
                     # I believe this API is missing on some cameras so we'll just ignore it and move on
                     _LOGGER.debug("Could not get profile mode", exc_info=exception)
+                    pass
+            
+            # We need the ptz status
+            if self._supports_ptz_position:
+                try:
+                    ptz_data = await self.client.async_get_ptz_position()
+                    data.update(ptz_data)
+                    self._preset_position = ptz_data.get("status.PresetID", "0")
+                    if not self._preset_position:
+                        self._preset_position = "0"
+                except Exception as exception:
+                    # I believe this API is missing on some cameras so we'll just ignore it and move on
+                    _LOGGER.debug("Could not get preset position", exc_info=exception)
                     pass
 
             # Figure out which APIs we need to call and then fan out and gather the results
@@ -626,11 +650,11 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
         IPC-HDW3849HP-AS-PV does
         """
         return  not (self.is_amcrest_doorbell() or self.is_flood_light()) and "table.Lighting_V2[{0}][0][0].Mode".format(self._channel) in self.data
-
+    
     def supports_ptz_position(self) -> bool:
         """Return true if the camera supports fetching its PTZ position."""
         return self._supports_ptz_position
-
+    
     def is_motion_detection_enabled(self) -> bool:
         """ Returns true if motion detection is enabled for the camera """
         return self.data.get("table.MotionDetect[{0}].Enable".format(self._channel), "").lower() == "true"
