@@ -174,6 +174,20 @@ as they fire. That can help you understand the events. Or you can HA and open De
 "Listen to events" enter `dahua_event_received` and then click "Start Listening" and wait for events to fire (you might
 need to walk in front of your cam to make motion events fire, or press a button, etc)
 
+## Intrusion event coordinates
+
+Binary sensors created for Dahua intrusion (`CrossRegionDetection`) rules expose the most recent event payload so that the
+bounding box and center coordinates can be used in automations or scripts. The example below shows how to read these values
+after an intrusion event has triggered:
+
+```jinja2
+{{ state_attr('binary_sensor.cam13_cross_region_detection', 'bounding_box') }}
+{{ state_attr('binary_sensor.cam13_cross_region_detection', 'center') }}
+```
+
+Each time the event fires, the `event_payload` attribute is updated and then cleared when the event stops, ensuring that the
+coordinates reflect the last detection only while the alarm is active.
+
 ## Example Code Events
 | Code | Description |
 | ----- | ----------- |
