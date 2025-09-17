@@ -2,7 +2,7 @@
 Custom integration to integrate Dahua cameras with Home Assistant.
 """
 import asyncio
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import logging
 import ssl
 import time
@@ -149,6 +149,9 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
         # A dictionary of event name (CrossLineDetection, VideoMotion, etc) to the time the event fire or was cleared.
         # If cleared the time will be 0. The time unit is seconds epoch
         self._dahua_event_timestamp: Dict[str, int] = dict()
+
+        # Stores the payload data for the last firing of an event (BoundingBox, Center, etc)
+        self._dahua_event_payload: Dict[str, Dict[str, Any]] = dict()
 
         self._floodlight_mode = 2
 
@@ -488,8 +491,20 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
 
             event_key = self.get_event_key(event_name)
             listener = self._dahua_event_listeners.get(event_key)
+            action = event["action"]
+            event_data = event.get("data")
+            if event_data is None:
+                event_data = event.get("Data")
+
+            if action == "Start":
+                if isinstance(event_data, dict):
+                    self._dahua_event_payload[event_key] = event_data
+                else:
+                    self._dahua_event_payload.pop(event_key, None)
+            elif action == "Stop":
+                self._dahua_event_payload.pop(event_key, None)
+
             if listener is not None:
-                action = event["action"]
                 if action == "Start":
                     self._dahua_event_timestamp[event_key] = int(time.time())
                     listener()
@@ -533,6 +548,11 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
         """
         event_key = self.get_event_key(event_name)
         return self._dahua_event_timestamp.get(event_key, 0)
+
+    def get_last_event_payload(self, event_name: str) -> Optional[Dict[str, Any]]:
+        """Return the payload supplied with the last event firing if available."""
+        event_key = self.get_event_key(event_name)
+        return self._dahua_event_payload.get(event_key)
 
     def add_dahua_event_listener(self, event_name: str, listener: CALLBACK_TYPE):
         """ Adds an event listener for the given event (CrossLineDetection, etc).

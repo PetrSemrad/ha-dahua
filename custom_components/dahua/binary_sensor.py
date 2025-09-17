@@ -131,3 +131,29 @@ class DahuaEventSensor(DahuaBaseEntity, BinarySensorEntity):
     def should_poll(self) -> bool:
         """Return True if entity has to be polled for state.  False if entity pushes its state to HA"""
         return False
+
+    @property
+    def extra_state_attributes(self):
+        attributes = dict(super().extra_state_attributes)
+
+        event_payload = self._coordinator.get_last_event_payload(self._event_name)
+        if event_payload:
+            attributes["event_payload"] = event_payload
+
+            if self._event_name == "CrossRegionDetection":
+                bounding_box = event_payload.get("BoundingBox")
+                center = event_payload.get("Center")
+
+                obj = event_payload.get("Object")
+                if isinstance(obj, dict):
+                    if bounding_box is None:
+                        bounding_box = obj.get("BoundingBox")
+                    if center is None:
+                        center = obj.get("Center")
+
+                if bounding_box is not None:
+                    attributes["bounding_box"] = bounding_box
+                if center is not None:
+                    attributes["center"] = center
+
+        return attributes
