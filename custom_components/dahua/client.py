@@ -74,6 +74,11 @@ class DahuaClient:
         url = "/cgi-bin/snapshot.cgi?channel={0}".format(channel_number)
         return await self.get_bytes(url)
 
+    async def async_get_ptz_position(self, channel: int) -> dict:
+        """Fetch the PTZ position for the provided channel."""
+        url = "/cgi-bin/ptz.cgi?action=getStatus&channel={0}".format(channel)
+        return await self.get(url)
+
     async def async_get_system_info(self) -> dict:
         """
         Get system info data from the getSystemInfo API. Example response:

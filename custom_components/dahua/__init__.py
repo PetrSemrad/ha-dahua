@@ -114,6 +114,7 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
         self._supports_smart_motion_detection = False
         self._supports_lighting = False
         self._supports_floodlightmode = False
+        self._supports_ptz_position = False
         self._serial_number: str
         self._profile_mode = "0"
         self._supports_profile_mode = False
@@ -283,6 +284,13 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
                     self._supports_lighting_v2 = False
                     pass
                 _LOGGER.info("Device supports Lighting_V2=%s", self._supports_lighting_v2)
+
+                try:
+                    await self.client.async_get_ptz_position(self._channel_number)
+                    self._supports_ptz_position = True
+                except ClientError:
+                    self._supports_ptz_position = False
+                _LOGGER.info("Device supports PTZ position=%s", self._supports_ptz_position)
 
 
                 if not is_doorbell:
@@ -617,7 +625,11 @@ class DahuaDataUpdateCoordinator(DataUpdateCoordinator):
         Returns true if this camera has an illuminator (white light for color cameras).  For example, the
         IPC-HDW3849HP-AS-PV does
         """
-        return  not (self.is_amcrest_doorbell() or self.is_flood_light()) and "table.Lighting_V2[{0}][0][0].Mode".format(self._channel) in self.data   
+        return  not (self.is_amcrest_doorbell() or self.is_flood_light()) and "table.Lighting_V2[{0}][0][0].Mode".format(self._channel) in self.data
+
+    def supports_ptz_position(self) -> bool:
+        """Return true if the camera supports fetching its PTZ position."""
+        return self._supports_ptz_position
 
     def is_motion_detection_enabled(self) -> bool:
         """ Returns true if motion detection is enabled for the camera """
