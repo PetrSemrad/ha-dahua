@@ -2,6 +2,7 @@
 import logging
 import socket
 import asyncio
+from typing import Optional
 import aiohttp
 import async_timeout
 
@@ -73,11 +74,6 @@ class DahuaClient:
         """
         url = "/cgi-bin/snapshot.cgi?channel={0}".format(channel_number)
         return await self.get_bytes(url)
-
-    async def async_get_ptz_position(self, channel: int) -> dict:
-        """Fetch the PTZ position for the provided channel."""
-        url = "/cgi-bin/ptz.cgi?action=getStatus&channel={0}".format(channel)
-        return await self.get(url)
 
     async def async_get_system_info(self) -> dict:
         """
@@ -303,7 +299,7 @@ class DahuaClient:
         url = "/cgi-bin/configManager.cgi?action=getConfig&name=SmartMotionDetect"
         return await self.get(url)
     
-    async def async_get_ptz_position(self) -> dict:
+    async def async_get_ptz_position(self, channel: Optional[int] = None) -> dict:
         """
         Gets the status of PTZ Example output:
         status.Action=Preset
@@ -318,6 +314,8 @@ class DahuaClient:
         status.ZoomStatus=Idle
         """
         url = "/cgi-bin/ptz.cgi?action=getStatus"
+        if channel is not None:
+            url = f"{url}&channel={channel}"
         return await self.get(url)
 
     async def async_get_light_global_enabled(self) -> dict:
